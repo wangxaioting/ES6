@@ -1,5 +1,8 @@
-var a = [1,2,3,4];
-var newa = a.map(function(x){
- return x+1;
-});
-console.log(newa,a); 
+function Greeting(name) {
+    this.name = name;
+}
+
+
+
+// Reflect.construct 的写法
+const instance = Reflect.construct(Greeting, ['张三']);

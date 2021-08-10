@@ -1115,6 +1115,115 @@ new p() // 报错
     - 目标对象上不存在的属性
     - 属性名为 `Symbol` 值
     - 不可遍历（`enumerable`）的属性
+
     
+
 #### this 问题
-- 
+
+```JS
+const _name = new WeakMap();
+
+class Person {
+    constructor(name) {
+        _name.set(this, name);
+    }
+    get name() {
+        return _name.get(this);
+    }
+}
+
+const jane = new Person('Jane');
+jane.name // 'Jane'
+
+const proxy = new Proxy(jane, {});
+proxy.name // undefined
+```
+
+上面代码中, 目标对象 `jane` 的 `name` 属性, 实际保存在外部 `WeakMap` 对象 `_name` 上面, 通过 `this` 键区分. 由于通过 `proxy` . `name` 访问时, `this` 指向 `proxy` , 导致无法取到值, 所以返回 `undefined` .
+
+### Reflect
+
+#### 概述
+
+1. `Reflect`对象的方法与`Proxy`对象的方法一一对应，只要是`Proxy`对象的方法，就能在`Reflect`对象上找到对应的方法。这就让`Proxy`对象可以方便地调用对应的`Reflect`方法，完成默认行为，作为修改行为的基础。
+2. 将`Object`对象的一些明显属于语言内部的方法（比如`Object.defineProperty`），放到`Reflect`对象上。现阶段，某些方法同时在`Object`和`Reflect`对象上部署，未来的新方法将只部署在`Reflect`对象上。也就是说，从`Reflect`对象上可以拿到语言内部的方法。
+
+#### 静态方法
+
+1. Reflect.get(target, name, receiver)
+* 如果`name`属性部署了读取函数(`getter`), 则读取函数的`this`绑定`receiver`.
+
+```JS
+var myObject = {
+    foo: 1,
+    bar: 2,
+    get baz() {
+        return this.foo + this.bar;
+    },
+};
+
+var myReceiverObject = {
+    foo: 4,
+    bar: 4,
+};
+
+Reflect.get(myObject, 'baz', myReceiverObject) // 8
+```
+
+2. Reflect.set(target, name, value, receiver)
+* 如果`name`属性设置了赋值函数, 则赋值函数的`this`绑定`receiver`.
+
+```JS
+var myObject = {
+    foo: 4,
+    set bar(value) {
+        return this.foo = value;
+    },
+};
+
+var myReceiverObject = {
+    foo: 0,
+};
+
+Reflect.set(myObject, 'bar', 1, myReceiverObject);
+myObject.foo // 4
+myReceiverObject.foo // 1
+```
+
+* 注意, 如果 `Proxy`对象和 `Reflect`对象联合使用, 前者拦截赋值操作, 后者完成赋值的默认行为, 而且传入`receiver`, 那么`Reflect.set`会触发`Proxy`.`defineProperty`拦截. 这是因为`Proxy.set`的`receiver`参数总是指向当前的 `Proxy`实例(即上例的`obj`), 而`Reflect.set`一旦传入`receiver`, 就会将属性赋值到`receiver`上面(即`obj`), 导致触发`defineProperty`拦截.
+
+```JS
+let p = {
+    a: 'a'
+};
+
+let handler = {
+    set(target, key, value, receiver) {
+        console.log('set');
+        Reflect.set(target, key, value, receiver)
+    },
+    defineProperty(target, key, attribute) {
+        console.log('defineProperty');
+        Reflect.defineProperty(target, key, attribute);
+    }
+};
+
+let obj = new Proxy(p, handler);
+obj.a = 'A';
+// set
+// defineProperty
+```
+
+3. Reflect.construct(target, args)
+
+```JS
+function Greeting(name) {
+    this.name = name;
+}
+
+// new 的写法
+const instance = new Greeting('张三');
+
+// Reflect.construct 的写法,如果Reflect.construct()方法的第一个参数不是函数，会报错。
+const instance = Reflect.construct(Greeting, ['张三']);
+```
