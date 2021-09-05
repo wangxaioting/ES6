@@ -846,7 +846,7 @@ a?.b
 // 等同于
 a == null ? undefined : a.b
 
-a?. [x]
+a?.[x]
 // 等同于
 a == null ? undefined : a[x]
 
@@ -1227,3 +1227,55 @@ const instance = new Greeting('张三');
 // Reflect.construct 的写法,如果Reflect.construct()方法的第一个参数不是函数，会报错。
 const instance = Reflect.construct(Greeting, ['张三']);
 ```
+
+### Promise 对象
+
+#### 基本用法
+
+```JS
+const promise = new Promise(function(resolve, reject) {
+    // ... some code
+
+    if ( /* 异步操作成功 */ ) {
+        resolve(value);
+    } else {
+        reject(error);
+    }
+});
+```
+
+1. `resolve`函数的作用是, 将`Promise`对象的状态从"未完成"变为"成功"(即从 `pending` 变为 `resolved`), 在异步操作成功时调用, 并将异步操作的结果, 作为参数传递出去; `reject`函数的作用是, 将`Promise`对象的状态从"未完成"变为"失败"(即从 `pending` 变为 `rejected`), 在异步操作失败时调用, 并将异步操作报出的错误, 作为参数传递出去.
+
+```JS
+let promise = new Promise(function(resolve, reject) {
+    console.log('Promise');
+    resolve();
+});
+
+promise.then(function() {
+    console.log('resolved.');
+});
+
+console.log('Hi!');
+
+// Promise
+// Hi!
+// resolved
+```
+2. 上面代码中，`Promise` 新建后立即执行，所以首先输出的是`Promise`。然后，`then`方法指定的回调函数，将在当前脚本所有同步任务执行完才会执行，所以`resolved`最后输出。
+
+```JS
+const p1 = new Promise(function (resolve, reject) {
+  setTimeout(() => reject(new Error('fail')), 3000)
+})
+
+const p2 = new Promise(function (resolve, reject) {
+  setTimeout(() => resolve(p1), 1000)
+})
+
+p2
+  .then(result => console.log(result))
+  .catch(error => console.log(error))
+// Error: fail
+```
+3. 上面代码中，`p1`是一个 `Promise`，`3` 秒之后变为`rejected`。`p2`的状态在 `1` 秒之后改变，`resolve`方法返回的是`p1`。由于`p2`返回的是另一个 `Promise`，导致`p2`自己的状态无效了，由`p1`的状态决定`p2`的状态。所以，后面的`then`语句都变成针对后者（`p1`）。又过了 `2 `秒，`p1`变为`rejected`，导致触发`catch`方法指定的回调函数。

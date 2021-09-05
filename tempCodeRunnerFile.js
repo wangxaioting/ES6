@@ -1,8 +1,12 @@
-function Greeting(name) {
-    this.name = name;
-}
-
-
-
-// Reflect.construct 的写法
-const instance = Reflect.construct(Greeting, ['张三']);
+const p1 = new Promise(function (resolve, reject) {
+    setTimeout(() => reject(123), 3000)
+  })
+  
+  const p2 = new Promise(function (resolve, reject) {
+    setTimeout(() => resolve(p1), 1000)
+  })
+  
+  p2
+    .then(result => console.log(result))
+    .catch(error => console.log('error',error))
+  // Error: fail
